@@ -229,3 +229,80 @@ INSERT INTO Book(bookid, bookname, publisher, price) VALUES(11, '스포츠 의학', '
 -- Book 테이블에 새로운 도서 '스포츠 의학'을 삽입하십시오. 스포츠 의학은 한솔의학서적에서 출간했으며 가격은 미정
 INSERT INTO Book(bookid, bookname, publisher, price) VALUES(14, '스포츠 의학', '한솔의학서적', null);
 -- 수입도서 목록(Imported_book)을 Book 테이블에 모두 삽입하시오. 
+INSERT INTO Book(bookid, bookname, price, publisher)
+        SELECT bookid, bookname, price, publisher
+        FROM Imported_book;
+-- Customer 테이블에서 고객번호가 5인 고객의 주소를 '대한민국 부산'으로 변경하시오. 
+UPDATE Customer
+SET address = '대한민국 부산'
+WHERE custid = 5;
+-- Customer 테이블에서 박세리 고객의 주소를 김연아 고객의 주소로 변경하시오. 
+UPDATE Customer
+SET address = (SELECT address FROM Customer WHERE name = '김연아')
+WHERE name LIKE '박세리';
+-- Customer 테이블에서 고객번호가 5인 고객을 삭제하시오. 
+DELETE FROM Customer
+WHERE custid = 5;
+-- 모든 고객을 삭제하시오.
+DELETE FROM Customer;
+
+-- 마당서점에서 다음의 심화된 질문에 대해 SQL 문을 작성하시오.
+-- 박지성이 구매한 도서의 출판사와 같은 출판사에서 도서를 구매한 고객의 이름
+SELECT DISTINCT c.name
+FROM ORDERS O, CUSTOMER C, BOOK B 
+WHERE o.custid = c.custid AND b.bookid = o.bookid AND B.PUBLISHER IN 
+(SELECT B.PUBLISHER
+FROM ORDERS O, CUSTOMER C, BOOK B
+WHERE o.custid = c.custid AND b.bookid = o.bookid AND NAME LIKE '박지성')
+MINUS
+SELECT C.NAME
+FROM CUSTOMER C 
+WHERE NAME LIKE '박지성';
+-- 두 개 이상의 서로 다른 출판사에서 도서를 구매한 고객의 이름 
+-- 1. GROUP BY 
+SELECT C.NAME
+FROM ORDERS O, CUSTOMER C, BOOK B
+WHERE o.custid = c.custid AND b.bookid = o.bookid 
+GROUP BY C.NAME
+HAVING COUNT(distinct PUBLISHER) >= 2;
+-- 2. 상관쿼리 
+SELECT name
+FROM customer c1
+WHERE 2 <= 
+(SELECT count(distinct publisher)
+FROM ORDERS, CUSTOMER, BOOK
+WHERE customer.custid = orders.custid AND book.bookid = orders.bookid AND name like c1.name);
+-- 전체 고객의 30% 이상이 구매한 도서
+SELECT b.bookname
+FROM BOOK B, CUSTOMER C, ORDERS O 
+WHERE o.custid = c.custid AND o.bookid = b.bookid 
+GROUP BY b.bookname
+HAVING COUNT(NAME) >= (SELECT count(name)*0.3 FROM customer);
+
+-- 1. GROUP BY
+SELECT bookname, count(book.bookid)
+FROM book, orders
+WHERE book.bookid = orders.bookid 
+GROUP BY bookname
+HAVING count(orders.bookid) >= 0.3 * (SELECT count(*) FROM customer);
+-- 2. 상관쿼리
+SELECT bookname
+FROM book b1
+WHERE (SELECT count(book.bookid)
+        FROM book, orders
+        WHERE book.bookid = orders.bookid 
+        AND book.bookid = b1.bookid) >= 
+        0.3 * (SELECT count(*) FROM customer);
+-- 새로운 도서('스포츠 세계', '대한미디어', 10000원)이 마당서점에 입고되었다. 
+-- 상입이 안 될 경우 필요한 데이터가 더 있는지 찾아보자. 
+INSERT INTO Book(bookid, bookname, publisher, price) VALUES(15,'스포츠 세계', '대한 미디어', 10000);
+-- '삼성당'에서 출판한 도서를 삭제해야 한다. 
+DELETE FROM Book
+WHERE publisher = '삼성당';
+-- '이상미디어'에서 출판한 도서를 삭제해야 한다. 삭제가 안 될 경우 원인을 생각해보자.
+DELETE FROM Book
+WHERE publisher = '이상미디어';
+-- 출판사 '대한미디어'가 '대한출판사'로 이름을 바꾸었다. 
+UPDATE Book
+SET publisher = '대한출판사'
+WHERE publisher = '대한미디어';
